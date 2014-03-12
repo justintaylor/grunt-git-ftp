@@ -1,6 +1,6 @@
 /*
  * grunt-git-ftp
- * https://github.com/robertomarte/grunt-git-ftp
+ * https://github.com/carlosmarte/grunt-git-ftp
  *
  * Copyright (c) 2013 Roberto Carlos Marte
  * Licensed under the MIT license.
@@ -128,7 +128,11 @@ module.exports = function(grunt){
   * report errors
   */  
   GruntGitFtp.prototype.gitCmdErr = function(err){  
-    if(err.toString().indexOf('Needed a single revision')){
+	if(err.toString().indexOf('is not recognized as')){
+		// 'is not recognized as' is a Windows error
+		log.error('Git was not found or is not in the path'.red);
+	}
+	else if(err.toString().indexOf('Needed a single revision')){
      log.error('Git Needed a single revision, please run'.red);
      log.ok('git add .'.red);
      log.ok('git commit -m "your message goes here"'.red);
@@ -162,15 +166,27 @@ module.exports = function(grunt){
   */ 
   GruntGitFtp.prototype.uploadFiles = function(list,cb){
     var remoteRootPath = this.ftp('remotePath'),
-    host = this.ftp('host');
+    host = this.ftp('host'),
+    remotePath = '',
+	slash = '/';
+	//determine slash type
+	if(process.platform == 'win32') {
+		slash = '\\';
+	}
+	
     if(list.length){ 
         async.forEach(list,function(filepath, nextArray){
-          ftp.put(gruntRootPath + '/' + filepath,path.normalize(remoteRootPath + '/' + filepath),function(err){
+		remotePath = path.normalize(remoteRootPath + '/' + filepath);
+        if(process.platform == 'win32') {
+          //swap slashes
+          remotePath = remotePath.replace(/\\/g,'/');
+        }
+		ftp.put(gruntRootPath + slash + filepath,remotePath,function(err){
             if(err){
               cb(true,err);
               throw err; 
             }      
-            log.ok('Uploaded from: ' + filepath + ' >> ' + host.blue + '@' + path.normalize(remoteRootPath + '/' + filepath).green);     
+            log.ok('Uploaded from: ' + filepath + ' >> ' + host.blue + '@' + path.normalize(remotePath).green);     
             ftp.end();
             nextArray();
           }); 
